@@ -1,0 +1,126 @@
+{
+  "summarize_provider_id": {
+    "description": "摘要使用的 LLM 模型",
+    "type": "string",
+    "default": "",
+    "hint": "选择一个已配置的模型来生成文字记忆摘要。留空则使用原文截断",
+    "options": [
+      "",
+      "siliconflow/deepseek-ai/DeepSeek-V3.2",
+      "siliconflow/Qwen/Qwen3-VL-30B-A3B-Thinking",
+      "openai/[满血Pro] gemini-3-pro-preview",
+      "openai/[原生格式]gemini-3-flash-preview",
+      "github/gpt-5.2-ca",
+      "白山/MiniMax-M2.5",
+      "星见雅/deepseek-ai/deepseek-v3.2",
+      "openai/[备用渠道A] gemini-3-pro-preview",
+      "星见雅/gpt-5.2-codex",
+      "astrbot 7群/kimi-k2.5",
+      "自建/gemini-3-flash"
+    ]
+  },
+  "vision_provider_id": {
+    "description": "图片识别使用的视觉模型",
+    "type": "string",
+    "default": "",
+    "hint": "选择一个支持图片输入的模型来识别图片内容。留空则图片只标记为[含图片]。推荐 Qwen3-VL",
+    "options": [
+      "",
+      "siliconflow/deepseek-ai/DeepSeek-V3.2",
+      "siliconflow/Qwen/Qwen3-VL-30B-A3B-Thinking",
+      "openai/[满血Pro] gemini-3-pro-preview",
+      "openai/[原生格式]gemini-3-flash-preview",
+      "github/gpt-5.2-ca",
+      "白山/MiniMax-M2.5",
+      "星见雅/deepseek-ai/deepseek-v3.2",
+      "openai/[备用渠道A] gemini-3-pro-preview",
+      "星见雅/gpt-5.2-codex",
+      "astrbot 7群/kimi-k2.5",
+      "自建/gemini-3-flash"
+    ]
+  },
+  "enable_group_context": {
+    "description": "启用群聊上下文感知",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 bot 会记住各个群的对话内容，在其他群被问到时能引用"
+  },
+  "group_context_max_messages": {
+    "description": "每群最大消息缓存数",
+    "type": "int",
+    "default": 50,
+    "hint": "每个群最多缓存多少条原始消息"
+  },
+  "group_context_max_groups": {
+    "description": "注入时最多引用几个群",
+    "type": "int",
+    "default": 3,
+    "hint": "LLM 请求时最多注入多少个其他群的上下文"
+  },
+  "group_context_min_messages": {
+    "description": "触发群聊摘要的最少消息数",
+    "type": "int",
+    "default": 3,
+    "hint": "至少积累多少条新消息后才生成群聊对话摘要"
+  },
+  "group_context_debounce": {
+    "description": "群聊摘要抖动时间（秒）",
+    "type": "int",
+    "default": 60,
+    "hint": "群聊静默多久后触发摘要生成。建议 30-120 秒"
+  },
+  "max_records_per_user": {
+    "description": "每用户最大记忆数",
+    "type": "int",
+    "default": 20,
+    "hint": "超过此数量后最旧的记忆会被自动清理"
+  },
+  "record_ttl_hours": {
+    "description": "记忆过期时间（小时）",
+    "type": "int",
+    "default": 48,
+    "hint": "超过此时间的记忆会被自动忽略"
+  },
+  "inject_max_records": {
+    "description": "每次注入的最大记忆数",
+    "type": "int",
+    "default": 5,
+    "hint": "每次 LLM 请求时最多注入多少条跨会话记忆"
+  },
+  "min_message_length": {
+    "description": "最小消息长度（纯文字）",
+    "type": "int",
+    "default": 4,
+    "hint": "少于此字数的纯文字消息不会被记忆（含图片消息不受此限制）"
+  },
+  "enable_private_to_group": {
+    "description": "私聊→群聊感知",
+    "type": "bool",
+    "default": true,
+    "hint": "允许 bot 在群聊中引用用户私聊的内容"
+  },
+  "enable_group_to_private": {
+    "description": "群聊→私聊感知",
+    "type": "bool",
+    "default": true,
+    "hint": "允许 bot 在私聊中引用用户群聊的内容"
+  },
+  "enable_group_to_group": {
+    "description": "群聊→群聊感知",
+    "type": "bool",
+    "default": true,
+    "hint": "允许 bot 在一个群聊中引用用户在另一个群聊的内容"
+  },
+  "sid_blacklist": {
+    "description": "会话黑名单（SID）",
+    "type": "list",
+    "default": [],
+    "hint": "黑名单中的会话不会被记忆，也不会被注入跨会话信息"
+  },
+  "debounce_seconds": {
+    "description": "用户消息抖动时间（秒）",
+    "type": "int",
+    "default": 15,
+    "hint": "建议 10-30 秒，用户停止发言后等待这么久再调用 LLM 生成摘要"
+  }
+}
