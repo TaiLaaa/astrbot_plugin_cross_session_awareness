@@ -9,6 +9,6 @@ help: |
     /跨群感知 群聊动态 — 查看各群的对话摘要
     /跨群感知 查看 — 查看自己的跨会话记忆
     /跨群感知 可用模型 — 列出可配置的 LLM 模型
-version: v2.0.0
+version: v2.1.0
 author: Antigravity
 repo: ""
