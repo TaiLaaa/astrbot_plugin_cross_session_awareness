@@ -9,7 +9,7 @@ from astrbot.api.all import *
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.event.filter import EventMessageType
 from astrbot.api.provider import ProviderRequest, LLMResponse
-from astrbot.api.message_components import Image, Plain
+from astrbot.api.message_components import Image, Plain, Forward, Node, Nodes
 from astrbot.api.star import Context, Star, register
 
 
@@ -363,6 +363,12 @@ class CrossSessionAwareness(Star):
         self._summarize_queue: asyncio.Queue = asyncio.Queue()
         self._worker_task = None
 
+        # 合并转发暂存：session_id -> {"text": str, "sender_name": str, "ts": float}
+        # 收到转发后不立即摘要，等群聊抖动结束时与后续讨论合并处理
+        self._forward_pending: dict[str, dict] = {}
+        # 转发暂存超时（秒），超时后单独摘要一次
+        self._forward_pending_ttl: float = self.config.get("forward_pending_ttl", 300)
+
         user_stats = self.store.get_stats()
         group_stats = self.group_log.get_stats()
         logger.info(
@@ -480,17 +486,44 @@ class CrossSessionAwareness(Star):
         session_id = items[0]["session_id"]
         session_label = items[0]["session_label"]
 
+        # 清理全局过期的 forward_pending（顺手扫描，避免泄漏）
+        now = time.time()
+        expired = [sid for sid, p in self._forward_pending.items()
+                   if now - p["ts"] > self._forward_pending_ttl]
+        for sid in expired:
+            logger.debug(f"[cross_session] 转发暂存超时丢弃: {sid}")
+            del self._forward_pending[sid]
+
         last_ts = self.group_log.get_last_summary_ts(session_id)
         new_msgs = self.group_log.get_unsummarized_messages(
             session_id, last_ts, min_count=self.group_context_min_messages)
-        if not new_msgs:
+
+        # ── 合并转发暂存处理 ──
+        pending = self._forward_pending.get(session_id)
+        forward_prefix = ""
+        if pending:
+            age = time.time() - pending["ts"]
+            if age <= self._forward_pending_ttl:
+                # pending 未超时：把转发内容作为前置上下文
+                forward_prefix = (
+                    f"【{pending['sender_name']} 分享的聊天记录】\n"
+                    f"{pending['text']}\n\n【群友随后的讨论】\n"
+                )
+            # 无论如何清除 pending（超时或已用）
+            del self._forward_pending[session_id]
+
+        if not new_msgs and not forward_prefix:
             return
 
         # 格式化为对话文本
         conv_lines = [f"{m['sender_name']}：{m['message']}" for m in new_msgs]
-        conversation = "\n".join(conv_lines)
+        conversation = forward_prefix + "\n".join(conv_lines)
 
-        logger.info(f"[cross_session] 🔄 准备生成群聊摘要: {session_label}, {len(new_msgs)} 条新消息")
+        logger.info(
+            f"[cross_session] 🔄 准备生成群聊摘要: {session_label}, "
+            f"{len(new_msgs)} 条新消息"
+            + (f" + 附带转发上下文" if forward_prefix else "")
+        )
         await self._ensure_worker()
         await self._summarize_queue.put(("group", session_id, session_label, conversation[:1500]))
 
@@ -621,6 +654,64 @@ class CrossSessionAwareness(Star):
             logger.info(f"[cross_session] ✅ 已注入 {injected} 条上下文 "
                         f"(会话: {event.unified_msg_origin})")
 
+    def _extract_nodes_text(self, nodes: list) -> str:
+        """递归提取 Node 列表中的纯文本，返回 '昵称：内容' 格式"""
+        lines = []
+        for node in nodes:
+            if not isinstance(node, Node):
+                continue
+            name = node.name or node.uin or "未知"
+            parts = []
+            for comp in (node.content or []):
+                if isinstance(comp, Plain):
+                    t = comp.text.strip()
+                    if t:
+                        parts.append(t)
+                elif isinstance(comp, Image):
+                    parts.append("[图片]")
+                elif isinstance(comp, Node):
+                    # 嵌套转发
+                    parts.append(f"[转发消息: {self._extract_nodes_text([comp])}]")
+                elif isinstance(comp, Nodes):
+                    parts.append(f"[转发消息: {self._extract_nodes_text(comp.nodes)}]")
+            if parts:
+                lines.append(f"{name}：{''.join(parts)}")
+        return "\n".join(lines)
+
+    async def _fetch_forward_content(self, event: AstrMessageEvent, forward_id: str) -> str:
+        """通过 OneBot API 拉取合并转发内容，返回对话文本（失败返回空串）"""
+        try:
+            bot = getattr(event, "bot", None)
+            if bot is None:
+                return ""
+            result = await bot.call_action("get_forward_msg", message_id=forward_id)
+            messages = result.get("messages") or result.get("data", {}).get("messages", [])
+            lines = []
+            for msg_data in messages:
+                sender = msg_data.get("sender", {})
+                name = sender.get("nickname") or sender.get("card") or str(sender.get("user_id", "未知"))
+                content_list = msg_data.get("message") or []
+                parts = []
+                for seg in content_list:
+                    seg_type = seg.get("type", "")
+                    seg_data = seg.get("data", {})
+                    if seg_type == "text":
+                        t = seg_data.get("text", "").strip()
+                        if t:
+                            parts.append(t)
+                    elif seg_type == "image":
+                        parts.append("[图片]")
+                    elif seg_type == "forward":
+                        parts.append("[嵌套转发]")
+                    elif seg_type in ("face", "mface"):
+                        parts.append("[表情]")
+                if parts:
+                    lines.append(f"{name}：{''.join(parts)}")
+            return "\n".join(lines)
+        except Exception as e:
+            logger.warning(f"[cross_session] 拉取合并转发内容失败 (id={forward_id}): {e}")
+            return ""
+
     @filter.event_message_type(EventMessageType.ALL, priority=99990)
     async def capture_message(self, event: AstrMessageEvent):
         """捕获所有消息，存入缓冲区"""
@@ -636,14 +727,46 @@ class CrossSessionAwareness(Star):
 
         # 提取图片 URL
         image_urls = []
+        # 检测合并转发
+        forward_text = ""
         try:
             for comp in event.get_messages():
                 if isinstance(comp, Image):
                     url = comp.url or comp.file
                     if url and (url.startswith("http://") or url.startswith("https://")):
                         image_urls.append(url)
+                elif isinstance(comp, Forward):
+                    # 只有 id，需调接口获取内容
+                    if comp.id:
+                        forward_text = await self._fetch_forward_content(event, comp.id)
+                elif isinstance(comp, Nodes):
+                    # 直接包含 nodes（少数平台/场景）
+                    forward_text = self._extract_nodes_text(comp.nodes)
         except Exception:
             pass
+
+        # ── 合并转发处理：暂存，等群聊抖动结束时与讨论合并 ──
+        if forward_text:
+            session_id = event.unified_msg_origin
+            session_label = self._get_session_label(event)
+            line_count = forward_text.count("\n") + 1
+            logger.info(
+                f"[cross_session] 📨 捕获合并转发: {sender_name}@{session_label}, "
+                f"{line_count} 条消息，暂存等待后续讨论"
+            )
+            # 暂存转发内容，等群聊 debounce 结束时一起摘要
+            self._forward_pending[session_id] = {
+                "text": forward_text[:1000],
+                "sender_name": sender_name,
+                "ts": time.time(),
+            }
+            # 同时触发群聊 debounce（让抖动计时器重置，等待后续讨论）
+            if self.enable_group_context:
+                await self._group_buffer.add(session_id, {
+                    "session_id": session_id,
+                    "session_label": session_label,
+                })
+            return  # 合并转发单独处理，不走普通消息流程
 
         # 太短且无图片则跳过
         if (not msg or len(msg.strip()) < self.min_message_length) and not image_urls:
