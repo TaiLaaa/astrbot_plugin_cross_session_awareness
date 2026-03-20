@@ -320,7 +320,7 @@ class MessageBuffer:
 
 
 @register("cross_session_awareness", "Antigravity",
-          "跨会话感知 - 跨群记忆 + 群聊上下文感知（v2.0）", "2.0.0")
+          "跨会话感知 - 跨群记忆 + 群聊上下文感知（v2.1）", "2.1.0")
 class CrossSessionAwareness(Star):
     def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
