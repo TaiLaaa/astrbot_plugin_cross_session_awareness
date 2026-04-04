@@ -79,6 +79,33 @@ https://github.com/TaiLaaa/astrbot_plugin_cross_session_awareness
 
 > 💡 **模型选项会在插件启动时自动从 AstrBot 已配置的模型列表中读取**，无需手动输入。
 
+### 🚫 会话黑名单配置说明
+
+黑名单填入的是会话的完整 ID（`unified_msg_origin`），格式为：
+
+```
+平台前缀:消息类型:QQ号或群号
+```
+
+**常见格式举例：**
+
+| 场景 | 填入内容示例 |
+|------|-------------|
+| 屏蔽某个群 | `default:GroupMessage:582235104` |
+| 屏蔽某个用户的私聊 | `default:FriendMessage:2624836044` |
+
+**如何获取正确的会话 ID？**
+
+在 AstrBot 日志中搜索关键词 `UMO`，可以看到类似：
+
+```
+UMO: 「default:GroupMessage:582235104」
+```
+
+复制引号内的完整字符串，粘贴到黑名单列表中即可。
+
+> ⚠️ 直接填 QQ 号或群号不会生效，必须填完整格式。
+
 ## 📋 管理命令
 
 | 命令 | 权限 | 说明 |
