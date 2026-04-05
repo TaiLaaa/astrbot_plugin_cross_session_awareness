@@ -10,5 +10,5 @@ help: |
     /跨群感知 查看 — 查看自己的跨会话记忆
     /跨群感知 可用模型 — 列出可配置的 LLM 模型
 version: v2.1.0
-author: Antigravity
-repo: ""
+author: TaiLaaa
+repo: "https://github.com/TaiLaaa/astrbot_plugin_cross_session_awareness"
