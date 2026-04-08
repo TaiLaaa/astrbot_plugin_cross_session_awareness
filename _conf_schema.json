@@ -5,18 +5,7 @@
     "default": "",
     "hint": "选择一个已配置的模型来生成文字记忆摘要。留空则使用原文截断",
     "options": [
-      "",
-      "siliconflow/deepseek-ai/DeepSeek-V3.2",
-      "siliconflow/Qwen/Qwen3-VL-30B-A3B-Thinking",
-      "openai/[满血Pro] gemini-3-pro-preview",
-      "openai/[原生格式]gemini-3-flash-preview",
-      "github/gpt-5.2-ca",
-      "白山/MiniMax-M2.5",
-      "星见雅/deepseek-ai/deepseek-v3.2",
-      "openai/[备用渠道A] gemini-3-pro-preview",
-      "星见雅/gpt-5.2-codex",
-      "astrbot 7群/kimi-k2.5",
-      "自建/gemini-3-flash"
+      ""
     ]
   },
   "vision_provider_id": {
@@ -25,18 +14,7 @@
     "default": "",
     "hint": "选择一个支持图片输入的模型来识别图片内容。留空则图片只标记为[含图片]。推荐 Qwen3-VL",
     "options": [
-      "",
-      "siliconflow/deepseek-ai/DeepSeek-V3.2",
-      "siliconflow/Qwen/Qwen3-VL-30B-A3B-Thinking",
-      "openai/[满血Pro] gemini-3-pro-preview",
-      "openai/[原生格式]gemini-3-flash-preview",
-      "github/gpt-5.2-ca",
-      "白山/MiniMax-M2.5",
-      "星见雅/deepseek-ai/deepseek-v3.2",
-      "openai/[备用渠道A] gemini-3-pro-preview",
-      "星见雅/gpt-5.2-codex",
-      "astrbot 7群/kimi-k2.5",
-      "自建/gemini-3-flash"
+      ""
     ]
   },
   "enable_group_context": {
