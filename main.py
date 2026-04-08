@@ -382,6 +382,16 @@ class CrossSessionAwareness(Star):
         self._refresh_provider_options()
         asyncio.create_task(self._delayed_refresh_provider_options())
 
+    @filter.on_plugin_loaded()
+    async def on_plugin_loaded(self, metadata):
+        try:
+            if metadata and getattr(metadata, "name", "") == "cross_session_awareness":
+                logger.info("[cross_session] 检测到插件加载完成，准备刷新模型选项")
+                self._refresh_provider_options()
+                asyncio.create_task(self._delayed_refresh_provider_options())
+        except Exception as e:
+            logger.warning(f"[cross_session] 插件加载后刷新模型选项失败: {e}")
+
     async def _delayed_refresh_provider_options(self):
         try:
             await asyncio.sleep(5)
