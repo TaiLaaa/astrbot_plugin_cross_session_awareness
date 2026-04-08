@@ -380,6 +380,14 @@ class CrossSessionAwareness(Star):
     @filter.on_astrbot_loaded()
     async def on_loaded(self):
         self._refresh_provider_options()
+        asyncio.create_task(self._delayed_refresh_provider_options())
+
+    async def _delayed_refresh_provider_options(self):
+        try:
+            await asyncio.sleep(5)
+            self._refresh_provider_options()
+        except Exception as e:
+            logger.warning(f"[cross_session] 延迟刷新模型选项失败: {e}")
 
     def _refresh_provider_options(self):
         try:
@@ -392,21 +400,13 @@ class CrossSessionAwareness(Star):
             if len(provider_ids) <= 1:
                 logger.debug("[cross_session] 无可用模型，跳过刷新")
                 return
-            schema_path = os.path.join(os.path.dirname(__file__), "_conf_schema.json")
-            with open(schema_path, "r", encoding="utf-8") as f:
-                schema = json.load(f)
-            for key in ("summarize_provider_id", "vision_provider_id"):
-                if key in schema and "options" in schema[key]:
-                    schema[key]["options"] = provider_ids
-            with open(schema_path, "w", encoding="utf-8") as f:
-                json.dump(schema, f, ensure_ascii=False, indent=2)
             from astrbot.core.star.star import star_map
             for path, metadata in star_map.items():
                 if "cross_session_awareness" in path and metadata.config and hasattr(metadata.config, "schema") and metadata.config.schema:
                     for key in ("summarize_provider_id", "vision_provider_id"):
                         if key in metadata.config.schema and "options" in metadata.config.schema[key]:
                             metadata.config.schema[key]["options"] = provider_ids
-            logger.info(f"[cross_session] 已自动刷新模型选项: {len(provider_ids)-1} 个模型")
+            logger.info(f"[cross_session] 已自动刷新模型选项: {len(provider_ids)-1} 个模型（仅运行时）")
         except Exception as e:
             logger.warning(f"[cross_session] 刷新模型选项失败: {e}")
 
